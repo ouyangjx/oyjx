@@ -1,0 +1,159 @@
+Python自动化测试
+https://www.cnblogs.com/puresoul/p/7488481.html
+
+
+>>Python自动化测试-环境准备
+
+0、安装python：
+    Windows
+    Linux
+    Mac
+
+
+1、安装虚拟环境：
+    我们在一台机器上可以安装多个python版本，为了使每个版本的环境相互不受干扰，可以安装虚拟环境，安装方法如下：
+    1、安装virtualenv：pip install virtualenv
+    2、新建名为venv的虚拟环境：virtualenv venv
+    3、进入新环境：source venv/bin/activate
+    4、退出：deactivate
+
+
+2、安装requests库：
+pip install requests
+
+
+3、http测试工具：
+    一个使用 Python + Flask 编写的 HTTP 请求和响应服务，该服务主要用于测试 HTTP 库。后续测试我们都基于这个网站。
+    http://httpbin.org/
+
+
+4、在本地搭建httpbin：
+    考虑到测试时要不断访问 httpbin 网站，请求过多担心被拉到黑名单，我们自己在本志搭建一套httpbin服务。
+    1、安装：pip install gunicorn
+    2、安装：pip install httpbin
+    3、启动：gunicorn httpbin:app
+
+
+
+>>Python自动化测试-requests.get()
+c
+get方法使用：
+    1、不带参数的get
+    2、带参数的get
+    3、带header的get
+    4、同时带参数和header
+
+
+
+>>Python自动化测试-requests.post()
+@Todo
+post方法使用：
+    1、带数据的post
+    2、带header的post
+    3、带json的post
+    4、带参数的post
+    5、普通文件上传
+    6、定制化文件上传
+    7、多文件上传
+    8、流式上传
+
+
+
+>>Python自动化测试-Cookie & Session
+@Todo
+Cookie：
+    1、获取cookie
+    2、发送cookie
+
+Session：
+    1、保持会话同步
+    2、保存会话信息
+    3、删除已存在的会话信息，保存为None
+    4、提供默认数据
+
+不通过Cookie存放SessionID的情况：
+    响应头返回token，下次请求头带上token（跨越情况）
+
+
+
+>>Python自动化测试-认证& 证书验证 & 代理 & 超时配置 & 错误异常
+
+认证 @Todo
+    基本认证：
+        rl = "http://httpbin.org/basic-auth/user/passwd"
+        r1 = requests.get(url)
+        print('未提供用户名密码：' + str(r1.status_code))
+
+        #Basic Authentication
+        r2 = requests.get(url,auth=('user','passwd'))
+        print('已提供用户名密码：' + str(r2.status_code))
+
+    数字认证：
+        >>> from requests.auth import HTTPDigestAuth
+        >>> url = 'http://httpbin.org/digest-auth/auth/user/pass'
+        >>> requests.get(url, auth=HTTPDigestAuth('user', 'pass'))
+        <Response [200]>
+
+    OAuth
+        http://docs.python-requests.org/en/master/user/authentication/
+
+
+证书验证 @Todo
+    SSL证书：
+        # 跳过12306 的证书验证，把 verify 设置为 False：
+        r = requests.get('https://kyfw.12306.cn/otn/', verify=False)
+        print(r.text)
+
+    客户端证书：
+        >>> requests.get('https://kennethreitz.org', cert=('/path/client.cert', '/path/client.key'))
+        <Response [200]>
+
+        or
+
+        s = requests.Session()
+        s.cert = '/path/client.cert'
+
+
+代理 @Todo
+    1、proxy参数：
+        proxies = {
+          "https": "http://41.118.132.69:4433"
+        }
+        r = requests.post("http://httpbin.org/post", proxies=proxies)
+        print(r.text)
+
+    2、设置环境变量：
+        $ export HTTP_PROXY="http://10.10.1.10:3128"
+        $ export HTTPS_PROXY="http://10.10.1.10:1080"
+
+        $ python
+        >>> import requests
+        >>> requests.get('http://example.org')
+
+    3、HTTP Basic Auth使用代理方法：http://user:password@host/
+        proxies = {'http': 'http://user:pass@10.10.1.10:3128/'}
+
+
+超时配置
+
+    利用timeout参数来配置最大请求时间：
+        r = requests.get('https://github.com', timeout=5)
+
+    设置timeout=None，告诉请求永远等待响应，而不将请求作为超时值传递：
+        r = requests.get('https://github.com', timeout=None)
+
+
+错误异常 @Todo
+    1、所有Requests显式抛出的异常都继承自：requests.exceptions.RequestException
+    2、遇到网络问题（如：DNS查询失败，拒绝连接等）时，requests会抛出一个 ConnectionError 异常
+    3、遇到罕见的无效HTTP响应时，Request则会抛出一个 HTTPError 异常
+    4、若请求超时，则抛出一个 Timeout 异常
+    5、若请求超过了最大的重写向次数，则会抛出一个 TooManyRedirects 异常
+    6、……
+
+
+
+>>Python自动化测试-python单元测试框架 unittest
+python单元测试框架 unittest，用它来处理批量用例管理，校验返回结果，初始化工作以及测试完成后的环境复原工作等等。
+
+

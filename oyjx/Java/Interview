@@ -1,0 +1,110 @@
+1、Java可以通过什么方式实现“多继承”
+接口
+内部类
+
+2、描述电梯运行状态的转变图
+
+3、Java内存泄露可能的原因
+
+4、死锁伪代码
+
+5、进入阻塞状态的原因
+    1、sleep
+    2、wait()直到notify()（或者并发类库中的await()直到signal()）
+    3、任务等待某个输入/输出完成（通过关闭流，另外NIO提供了更好的方法@Todo）
+    4、试图获取锁，但锁不可用（不一定是死锁哈）（ReetrantLock中获取锁后调用lockInterruptibly()，当Thread.interrupt()被调用是可以中断）
+
+通过调用Thread.interrupt()方法可以中断1/2两种情况，使之抛出InterruptionException异常
+关于Thread.interrupted()方法检查中断 @Todo
+
+
+5、算法题
+
+// 1.找出第i个斐波那契数
+// 递归
+
+// 非递归
+
+
+// 2.不使用临时变量交换两个数
+static void funSwapTwo(int a, int b) {
+    // 二进制只有0和1，只有四种情况，0^0=0 1^1=0 0^1=1 1^0=1
+    a = a ^ b;
+    b = b ^ a;
+    a = a ^ b;
+    System.out.println(a + " " + b);
+}
+
+// 判断一个数是否为素数
+static boolean funIsPrime(int m) {
+    boolean flag = true;
+    if (m == 1) {
+        flag = false;
+    } else {
+        // i遍历到根号m即可
+        for (int i = 2; i <= Math.sqrt(m); i++) {
+            if (m % i == 0) {
+                flag = false;
+                break;
+            }
+        }
+    }
+    return flag;
+}
+
+// 15道使用频率极高的基础算法题 http://www.codeceo.com/article/15-algorithms-question.html
+1、合并排序，将两个已经排序的数组合并成一个数组，其中一个数组能容下两个数组的所有元素;
+2、合并两个已经排序的单链表;
+3、倒序打印一个单链表;
+4、给定一个单链表的头指针和一个指定节点的指针，在O(1)时间删除该节点;
+5、找到链表倒数第K个节点;
+6、反转单链表;
+7、通过两个栈实现一个队列;
+8、二分查找;
+9、快速排序;
+10、获得一个int型的数中二进制中的个数;
+11、输入一个数组，实现一个函数，让所有奇数都在偶数前面;
+12、判断一个字符串是否是另一个字符串的子串;
+13、把一个int型数组中的数字拼成一个串，这个串代表的数字最小;
+14、输入一颗二叉树，输出它的镜像（每个节点的左右子节点交换位置）;
+15、输入两个链表，找到它们第一个公共节点;
+
+// 二叉树 https://blog.csdn.net/luckyxiaoqiang/article/details/7518888/#topic10
+1. 求二叉树中的节点个数
+递归解法：
+（1）如果二叉树为空，节点个数为0
+（2）如果二叉树不为空，二叉树节点个数 = 左子树节点个数 + 右子树节点个数 + 1
+
+2. 求二叉树的深度
+递归解法：
+（1）如果二叉树为空，二叉树的深度为0
+（2）如果二叉树不为空，二叉树的深度 = max(左子树深度， 右子树深度) + 1
+
+3. 前序遍历，中序遍历，后序遍历
+4. 分层遍历二叉树（按层次从上往下，从左往右）
+5. 将二叉查找树变为有序的双向链表
+6. 求二叉树第K层的节点个数
+7. 求二叉树中叶子节点的个数
+8. 判断两棵二叉树是否结构相同
+9. 判断二叉树是不是平衡二叉树
+10. 求二叉树的镜像
+11. 求二叉树中两个节点的最低公共祖先节点
+12. 求二叉树中节点的最大距离
+13. 由前序遍历序列和中序遍历序列重建二叉树
+14. 判断二叉树是不是完全二叉树
+
+
+// 关于java中链表的操作 https://blog.csdn.net/kerryfish/article/details/24043099
+1. 求单链表中结点的个数: getListLength
+2. 将单链表反转: reverseList（遍历），reverseListRec（递归）
+3. 查找单链表中的倒数第K个结点（k > 0）: reGetKthNode
+4. 查找单链表的中间结点: getMiddleNode
+5. 从尾到头打印单链表: reversePrintListStack，reversePrintListRec（递归）
+6. 已知两个单链表pHead1 和pHead2 各自有序，把它们合并成一个链表依然有序: mergeSortedList, mergeSortedListRec
+7. 对单链表进行排序,listSort（归并）,insertionSortList（插入）
+8. 判断一个单链表中是否有环: hasCycle
+9. 判断两个单链表是否相交: isIntersect
+10. 已知一个单链表中存在环，求进入环中的第一个节点: getFirstNodeInCycle, getFirstNodeInCycleHashMap
+11. 给出一单链表头指针head和一节点指针delete，O(1)时间复杂度删除节点delete: deleteNode
+
+

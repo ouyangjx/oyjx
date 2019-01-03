@@ -1,0 +1,121 @@
+影响事务的：
+网络操作（网络请求、发邮件等）、阻塞操作（队列可用长度不够了被阻塞、或像MongoDB、Redis这样的数据库或缓存导致的阻塞）、耗时操作（I/O等）尽量避免放入事务之中。
+
+涉及分布式事务的处理：
+    同步系统
+    补偿机制（错误日志）
+
+数据库优化相关和一些常见问题或SQL
+
+
+    SqlServer独特的sql：@Todo
+        1、cross apply 和 outer apply
+            （inner join 和 left/right join的区别）
+
+        2、SqlServer分页了解一下
+            // 查询20-30条记录
+            select
+                table.id, table.xxx, ...
+            from
+                table
+            join
+                (
+                    select
+                        top 30 row_number() over(order by 排序字段 asc/desc) as rowNum,
+                        table.id
+                    from
+                        table
+                    where
+                        xxxx
+                ) as temp
+            on
+                temp.id = table.id and temp.rowNum > 20 and xxxx;
+
+            // 这里有个优化点就是借助索引分页，即分页时只查出id（这是高效的，毕竟是聚集索引查找啊）
+        3、恩，好多都忘了，也没用脚本记录了= =
+
+
+索引
+    复合索引（普通复合、include（适用于查询列））
+    利用复合索引覆盖查询的注意点：
+        顺序问题
+            复合索引实现覆盖查询是注意，where的字段需要在join关联的字段前面，列的字段或者order by的字段是在最后面（join和后面的order by或者列的字段可以放在include）
+
+            其实，如果按照顺序来的话，where条件的字段也是能放在include里的，但前面好像一定要至少有一个字段
+
+            create index idx_xx on table(xx【这里一定要指定至少一列】) include(xxx, xxxx, ...)
+
+            如果想用复合索引，主键在查询列上时，可以不加好像 【但注意查询列是只有主键列时才这样】
+
+
+            如果多个join的列建复合索引，where的在前面就行（顺序可以乱），join等的在后面（顺序可以乱）！！！【问题：没有where查询列索引时，顺序好像不能乱，需要是从前往后】
+
+
+            中间可以出现没有用到的，但前面不可以！！！
+
+            关于这些规则，要多测试！！！
+
+        索引是否合理
+            看执行计划，然后和数据量也有关系的，另外也要考虑到后续的功能增改导致的问题。
+
+    组合主键 @Todo
+        回一下订单统计的（订单id和订单编号？）
+
+    一些老生常谈的优化点（）：@Todo
+        1、order by（有数字最好用数字不用时间，时间戳也很好）、group by
+        2、or 条件用不上索引，采用 union or 或者 反查询，如exist，都是考虑方向
+        3、同表关联可以优化多个子查询，比如之前拆单的提单查询
+        4、比如统计取货中间记录 <> -1 或者 = 2的，数量量都比较大，特别如果再子查询里面很影响性能，所以，可以选择查询 = 2 的和在子查询里查询 = 0 或 1的，当然这只是在统计数量时，这是一种优化方向，但具体情况具体分析！！！
+            像状态这样的字段弄成数字，在统计某几个连续范围内的会挺好用的（2 < status < 5）
+        5、隐式数据类型转换导致不走索引查找走全表扫描注意！！！
+            传入正确类型，或对做一些转换操作 ltrim() 转varchar 或者 直接 cast、convert之类的！！！
+        6、临时表的使用
+            表关联替代一些游标或循环
+        7、批量处理
+            insert into  xxTable(xx, xxx)
+            (
+                select xx, xxx
+                union all
+                select xxxx, xxxxx
+            );
+
+            批量删除也可以，批量修改也可以【关联】
+
+            delete from xxTable from xxTable inner join (
+                select 1 as id
+                union all
+                select 2 as id
+            ) as temp
+            on xxTable.id = temp.id
+        8、加了where条件（注意是left join 右边表加了条件，且应该是非NULL的条件（如果是 is not null 或者 is null就不算了））之后，left join 和 inner join就没有区别了！！！
+            这个执行器会优化，但也要注意以下。
+            对了：update用到join时候要注意，不要把一些不能改的数据改掉了！
+        9、必要时top 1 或limit 1，查到则返回，不用count()之类的判断是否存在某条数据
+        10、
+
+
+    B-Tree索引
+    Hash索引
+    位图索引
+
+存储过程（procedure） 触发器（trigger）
+
+关于视图的注意点
+（删除视图要注意啊！！！）
+
+
+
+关于一些显示的读锁、写锁等（U锁 X锁等）
+    --
+
+死锁
+    原因
+        如何分析
+    解决方案
+        如何加索引
+        代码中避免
+
+file:///home/oyjx/MyDocument/oyjxBackup/Collection/
+file:///home/oyjx/MyDocument/oyjxBackup/Collection/SQL%20Server/%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95(Clustered%20Index)%E5%92%8C%E9%9D%9E%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95%20(Non-%20Clustered%20Index)%20.txt
+file:///home/oyjx/MyDocument/oyjxBackup/Collection/SQL%20Server/%E6%89%A7%E8%A1%8C%E8%AE%A1%E5%88%92.txt
+file:///home/oyjx/MyDocument/oyjxBackup/Collection/SQL%20Server/%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB%E5%92%8C%E9%94%81.txt

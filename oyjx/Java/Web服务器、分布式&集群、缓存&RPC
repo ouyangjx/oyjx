@@ -1,0 +1,174 @@
+Https相关
+
+Tomcat相关配置参数
+    一些总结 @Todo
+
+Apache相关、Nginx相关（用作集群时的相关配置）（选择用什么服务器之前的压测）
+    动静分离
+    多域名
+    反向代理、负载均衡
+
+Dubbo、Zookeeper（底层核心原理及配置及集群）
+    @Todo
+
+Redis（安装配置、简答的语法使用、主从、哨兵、集群）
+
+安装配置：
+略
+
+简单的语法使用：
+get
+set
+keys
+exists
+del
+expire、ttl
+select（选择db）
+flush 清空所有数据库的所有key
+...
+
+
+redis事务：
+
+    // 伪代码
+    WATCH mykey # 当某个事务需要按条件执行时，就要使用这个命令将给定的键设置为受监控的
+    val = GET mykey
+    val = val + 1
+    MULTI # 用于标记事务块的开始
+    SET mykey $val
+    EXEC # 当使用WATCH命令时，只有当受监控的键没有被修改时，EXEC命令才会执行事务中的命令，这种方式利用了检查再设置（CAS）的机制。
+
+
+redis主从复制：
+
+    一主多从且从连从、不阻塞（后台线程处理，主线程继续服务）、使用文件保持数据库快照
+
+    redis主从复制的特点：
+        1.一个master可以拥有多个slave
+        2.多个slave可以连接同一个master外，还可以连接到其它slave
+        3.主从复制不会阻塞master，在同步数据时，master可以继续处理client的请求
+        4.提高系统的伸缩性
+
+    redis主从复制过程：
+        1.slave与master建立连接，发送sync同步命令
+        2.master会启动一个后台进程，将数据库快照保存到文件中，同时master主进程会开始收集新的写命令并缓存。
+        3.后台完成保存后，就将此文件发送给slave
+        4.slave将此文件保存到硬盘上
+
+    配置主从服务器：
+        配置slave服务器很简单，只需要在slave的配置文件中加入以下配置：
+            slave-serve-stale-data yes  // @Todo
+            slaveof 222.27.174.98 6379  //指定master的主机的IP和端口号
+            masterauth 888888  //主机数据库的密码
+        我们可以通过info命令来查看本机的redis是主服务器还是从服务器。
+
+
+redis哨兵（算是实现集群的一种方式吧）：
+
+    1.每个哨兵每秒一次的频率向他监控的master slave以及其他哨兵发送一个ping命令
+    2.如果一个实例距离最后一次有效回复ping命令的时间超过了down-after-milliseconds所指定的值，那么这个实例会被哨兵标记为主观下线。
+    3.如果一个master被标记为主观下线，正在监视这个master的所有哨兵会已每秒1次的频率确认master的确进入了主观下线，当有足够数量的哨兵在指定时间范围内确认master进入了主观下线状态，master会被标记为客观下线。
+    4.当master被标记为客观下线后，哨兵想下线的master的所有slave发送info命令的频率会由每10秒1次变成每秒一次
+
+    下面博客写的有两台服务器两个master是什么鬼！！！ @Todo
+    https://blog.csdn.net/qq_37853817/article/details/78961462
+    参考图片：image/Redis哨兵模式.png
+    模拟：使用两台服务器模拟六个节点，一台服务器一个master，两个salve。
+
+    1、首先启动一个redis服务
+        redis-server
+
+    一般默认端口是6379。
+    然后分别启动两个配置不同端口号redis服务，并设置为6379端口redis服务的两个从服务。
+        redis-server --port 6380 --slaveof <ip地址> 6379
+        redis-server --port 6381 --slaveof <ip地址> 6379
+    --port ：指定启动服务的端口号；
+    --slaveof ：配置当前服务成为某redis服务的slave，后面分别是master的ip和端口号。
+
+
+    2、创建一个sentinel.conf的文件，并配置一下sentinel的信息：
+            port 26379
+            sentinel monitor s1 <ip地址> 6379 2
+            sentinel monitor s2 <ip地址> 6379 2
+            protected-mode no
+
+        port ：指定启动服务的端口号；
+        Sentinel monitor <name> <ip> <port> <quorum>
+        name ：redis主服务名称，可以自行命名，但是在一个sentinel网络中，一个redis主服务只能有一个名称；
+        本次在两个服务器分别有一个master，分别命名为s1，s2。
+
+        ip和port ：redis主服务的IP地址和端口号；
+        quorum ：表示要将这个主服务器判断为失效并下线至少需要2个sentinel同意；本次使用了三个sentinel来构成sentinel网络，所以在这里设置为2，一般要启动奇数个sentinel，以保证不会出现正反方投票数相等的情况。
+        protected-mode ：关闭保护模式（默认情况下，redis node和sentinel的protected-mode都是yes，在搭建集群时，若想从远程连接redis集群，需要将redis node和sentinel的protected-mode修改为no，若只修改redis node，从远程连接sentinel后，依然是无法正常使用的，且sentinel的配置文件中没有protected-mode配置项，需要手工添加。依据redis文档的说明，若protected-mode设置为no后，需要增加密码证或是IP限制等保护机制，否则是极度危险的。）
+
+        以同样的方法在两个服务器中分别新建三个sentinel的配置文件。
+
+
+        在同一个服务器中配置多个时只需要将文件名和端口名修改即可。
+        本次在服务器一中配置了两个，端口号分别为26379和26380，在服务器二中配置一个，端口号为26379。
+        Sentinel会根据Master的配置自动发现Master的Slaves，因此不需要配置slave。
+        然后我们分别启动三个sentinel服务：
+            redis-sentinel sentinel1.conf
+
+redis集群（利用Cluster实现集群）：
+ 　　Redis3.0版本之后支持Cluster，目前redis支持的cluster特性：
+        1):节点自动发现
+　　     2):slave->master 选举,集群容错
+　　     3):Hot resharding:在线分片
+　　     4):进群管理:cluster xxx
+　　     5):基于配置(nodes-port.conf)的集群管理
+　　     6):ASK 转向/MOVED 转向机制.
+
+
+
+
+MongoDB（安装配置、简单的语法使用）
+    @Todo
+
+Redis & MongoDB 整整它们的数据源相关的东西
+    @Todo
+
+负载均衡
+    方案、实例、测试（压测等）@Todo
+
+静态资源服务器、CDN
+     Nginx、Apache
+     CDN注意点、回源...
+
+主从
+    数据库、代理服务器
+
+
+高并发抢红包方案：
+1、使用缓存
+缓存用户数据、红包信息、抢红包记录、抢红包开始前、开始页面（静态html，直接由如Nginx返回）
+问题：
+    倒计时
+        每次得到的静态页面由服务器返回当前时间，并开始倒计时
+    如何开始
+        开始前不让用户得到真正的抢红包URL，开始时刻由js更新按钮信息
+    关于sign的：
+
+2、负载均衡（高可用）
+3、过载保护
+4、考虑与现有服务分离
+5、防刷
+    1、前端按钮
+    2、js现在间隔时间
+    3、服务器层面判断用户是否抢过（缓存记录）
+    4、机器请求怎么处理（即便有sign？一样可以爬到） 恶意的请求
+        从ip之类的角度限制？
+6、高并发数据安全
+    1、悲观锁
+    2、FIFO（队列，串行化）
+    3、乐观锁（防止超发）
+        例如Redis中的watch
+            在Redis中，使用watch命令实现乐观锁(watch key):
+            watch命令会监视给定的key，当exec时，如果监视的key从调用watch后发生过变化，则事务会失败，也可以调用wathc多长监视多个key。这样就可以对指定key加乐观锁了。注意watch的可以是对整个连接有效的。事务也一样。如果连接断开，监视和事务都会被自动清除。当然exec，discard，unwatch命令都会清除连接中的所有监视。
+    4、
+7、
+
+@Todo
+    防刷问题
+    红包放redis怎么操作，一个红包一个key，抢完删除？
+    并发问题的解决（如果不仅是在应用服务器集群还是在redis集群下呢？）

@@ -1,0 +1,957 @@
+并发 Concurrent
+
+
+收藏：
+http://gee.cs.oswego.edu/dl/papers/aqs.pdf?tdsourcetag=s_pcqq_aiomsg
+https://blog.csdn.net/qq_32530519/article/details/85003016?tdsourcetag=s_pcqq_aiomsg
+
+
+问题：
+
+1、ReentrantLock
+isFair()
+          如果此锁的公平设置为 true，则返回 true。
+          @Todo 是为何用？
+Condition
+    使用互斥并允许任务挂起的基本类是Condition（使用显式的Lock和Condition对象）
+    Condition condition = lock.newCondition();
+    condition.await();
+    condition.signalAll();
+
+
+2、synchronized方法和synchronized代码块？
+synchronized放在方法前面，对于某个特定对象来说，其所有synchronized方法共享同一个锁；
+使用其方法正在被调用的当前对象作为同步对象：synchronized(this)，那么该对象上的synchronized方法和其他synchronized(this)代码块就共享同一个锁了。
+
+
+3、死锁产生类型及防止死锁《Java Concurrency in Practice》P170
+
+    >1、锁顺序死锁
+        调整顺序
+
+    >2、动态的锁顺序死锁（这种情况要特别注意，很容易忽视）
+        ① X->Y
+        ② Y->X
+        X给Y转账的同时Y给X转账，如果①先取X的锁，②先取Y的锁，那么就容易产生死锁，那么可以固定获取锁的顺序来避免死锁
+        （因为①和②用的是同一份代码，所以X与Y的锁是互换的，那么要固定顺序的话，可以对X、Y对象取hash值，不管X给Y还是Y给X转账，都依据hash值的大小判断获取锁顺序的先后，如果hash可能相同，所以可以再引入“加时赛”避免死锁，当然像账号这样的能够确保唯一的不变的就可以就可能不需要了。）
+
+    >3、在协作对象之间发生的死锁
+        两个锁并不一定必须在同一个方法中获取，不像前转账的例子那么明显。
+        P174
+
+        解决方案：
+            通过开放调用（调用某个方法不需要持有锁Open Call）来避免在相互协作的对象之间产生死锁。
+            即通过缩小同步范围，让某个方法不需要同时持有两把锁！
+            要注意的是这样的行为可能使某个操作失去了原子性，要考虑是否有影响！
+            P176
+
+    >4、资源死锁
+        P177
+
+    死锁的避免和诊断：
+        1、支持定时的锁
+            ReentrantLock
+        2、通过线程转储信息来分析死锁（Thread Dump）
+
+    其他活跃性危险：
+        1、饥饿（注意线程优先级）
+        2、糟糕的响应性（调节后台任务的优先级）
+        3、活锁（事务失败回滚重试陷入循环，引入随机性避免活锁的发生）
+
+
+4、线程引入的开销
+    >1、上下文切换
+        （无阻塞算法有助于减小上下文切换）
+
+    >2、内存同步，synchronized和volatile提供的可见性保证中可能会使用一些特殊指令，即内存栅栏，可以刷新缓存，使缓存无效，刷新硬件的写缓存，以及停止执行管道，这些可能会对性能带来间接的影响；
+        （现代的JVM可以通过优化来去掉一些不会发生竞争的锁，从而减少不必要的同步开销）
+
+    >3、阻塞
+        自旋等待（等待时间较短时）
+        线程挂起（等待时间较长时）
+
+
+5、减少锁的竞争
+    >1、缩小锁的范围（“快进快出”）
+
+    >2、减小锁的粒度
+    锁分解（是否需要使用同一个的对象作为锁？）
+    锁分段（在锁分解技术上进一步扩展为对一组独立对象上的锁进行分解，例如基于散列，划分到同一个散列值才加锁）
+    避免热点域（比如集合的size()方法，size的计算并发在调用该方法时计算，而是每个insert和remove等操作进行维护，将时间复杂度从O(n)变为O(1)）
+
+    >3、一些替代独占锁的方法
+        并发容器、读-写锁（ReadWriteLock）、不可变对象以及原子变量（更好的volatile）等
+
+
+
+其他问题：
+1、双重加锁
+可能会返回一个无效或错误的对象（除非返回的对象加上volatile保证可见性！）
+
+
+2、安全初始化
+提前初始化（通过变量初始化）
+延迟初始化（提供synchronized的初始化方法）
+延长初始化占位类模式（静态的初始化方法通过调用一个静态内部类的静态变量初始化）
+
+
+3、显式锁
+ReentrantLock
+    >1、轮询锁和定时锁
+    lock.tryLock();
+    lock.tryLock(时间, 单位);
+
+    >2、可中断的锁获取操作
+    lock.lockInterruptibly();  // 如果当前线程未被中断，则获取锁
+
+    >3、非块结构的加锁
+    比如用在降低锁粒度上（前面提到的散列锁分段技术）
+
+
+
+4、Java内存模型和重排序
+
+
+5、并发应用
+    1、阻塞
+        LinkedBlockingQueue.java （用了ReentrantLock（takeLock、putLock）和Condition（notEmpty、notFull阻塞及恢复的实现））
+        Mybatis自带的线程池实现利用的wait()和notifyAll()
+
+        阻塞队列的应用（I/O的管道也是一种）：
+        线程池（数据库连接池）与信号量？
+
+        CountDownLatch应用？
+            某某服务启动依赖于某某某些服务先启动
+
+        CyclicBarrier应用？
+            循环的CountDownLatch
+
+        等等其他的并发包组件= =
+
+    2、synchronized和ReentrantLock应用
+        轮询锁（自旋锁）和定时锁
+
+    3、线程池Executor
+        newCachedThreadPool()
+        newFixedThreadPool(int size)
+        newSingleThreadExecutor() 数量为1的newFixedThreadPool
+
+        应用：比如立创的静态化页面生成
+
+    4、安全初始化
+        三种方式，前面有提到
+
+    5、如何中断
+        如何安全中断某些服务
+
+    6、性能优化方面（保证线程安全的前提下）：
+        保证线程安全的前提下，对同步块和显式加锁的优化（减小锁竞争）
+        保证线程安全的前提下，看是否可以使用并发容器、读-写锁、原子对象、非阻塞同步机制等
+
+
+
+总结：
+1、为啥要同步，如何同步
+
+2、死锁原因，如何避免死锁
+
+3、Java SE5 concurrent类库中一些常用类特点和实际应用场景
+
+4、为何要中断，如何中断
+
+5、对性能的优化（做到线程安全在谈优化）
+
+
+>>基本的线程机制
+
+1、线程相关
+
+线程状态。线程可以处于下列状态之一：
+NEW
+至今尚未启动的线程处于这种状态。
+RUNNABLE
+正在 Java 虚拟机中执行的线程处于这种状态。
+BLOCKED
+受阻塞并等待某个监视器锁的线程处于这种状态。
+WAITING
+无限期地等待另一个线程来执行某一特定操作的线程处于这种状态。
+TIMED_WAITING
+等待另一个线程来执行取决于指定等待时间的操作的线程处于这种状态。
+TERMINATED
+已退出的线程处于这种状态。
+
+concurrent.locks
+synchronized /'sɪŋkrənaɪzd/
+volatile
+
+
+2、Thread
+Thread t = new Thread(new XXX<super Runnable>);
+t.start;
+
+Thread相关方法：
+
+Thread.yield() /ji:ld/
+对线程调度器（Java线程机制的一部分，可以将CPU从一个线程转移给另一个线程）的一种建议，它在声明“我已经执行完生命周期中最重要的部分了，此刻正是切换给其他任务执行一段时间的大好时机。”
+
+...
+
+
+3、Executor（java.util.concurrent包中的执行器）
+
+execute /ˈeksɪkju:t/
+executor /ɪgˈzekjətə(r)/
+exec /ɪgˈzek/
+
+ExecutorService exec = Executor.newCachedThreadPool();
+exec.execute(new XXX<super Runnable>);
+exec.shutdown(); // 防止新任务被提交给这个Executor
+
+不同类型的Executor：
+CachedThreadPool：
+FixedThreadPool：
+SingleThreadExecutor：就像是线程数量为1的FixedThreadPool。
+    如果向SingleThreadExecutor提交了多个任务，那么这些任务将排队，每个任务都会在下一个任务开始之前运行结束，所有的任务都将使用相同的线程。
+
+
+4、从任务中产生返回值
+Runnable是执行工作的独立任务，但是它不返回任何值，如果希望任务在完成时能够返回一个值，那么可以实现Callable接口而不是Runnable接口。
+在Java SE5中引入的Callable是一种具有类型参数的泛型，它的类型参数表示的是从方法call()（而不是run()）中返回的值，并且必须使用ExecutorService.submit()方法调用它。
+Future<?> result = exec.submit(new XXX<super Callable>); // submit()方法会产生Future对象，它是Callable返回结果的特定类型进行了参数化
+
+result.isDone(); // 查询Future是否已经完成
+result.get(); // 获取结果，get()将阻塞直至结果准备就绪
+
+>Future表示一个任务的生命周期，并提供了相应的方法来判断是否已经完成和取消，以及获取任务的结果和取消任务等。
+
+
+5、休眠
+// Old-style:
+Thread.sleep(100);
+// Java SE5-style:（允许指定sleep()延迟的时间单位，可以提供更好的阅读性，TimeUnit还可以被用来执行转换）
+TimeUnit.MILLISECONDS.sleep(100);
+
+对sleep()的调用可以抛出InterruptedException异常，并且它在run()中被捕获，因为异常不能跨线程传播回main()，所以必须在本地处理所有在任务内部产生的异常。
+
+
+6、优先级
+线程的优先级将该线程的重要性传递给了调度器。尽管CPU处理现有线程集的顺序是不确定的，但是调度器将倾向于优先级更高的线程先执行。（也不意味着优先级较低的线程将得不到执行，也就是说优先级不会导致死锁，优先级较低的线程仅仅是执行的频率较低）
+
+Thread.currentThread.getPriority() 读取现有程序的优先级
+Thread.currentThread.setPriority(Thread.MIN_PRIORITY/NORM_PRIORITY/Thread.MAX_PRIORITY); // 修改现有程序的优先级
+
+
+7、让步
+Thread.yield()
+给线程调度机制一个暗示：你的工作已经做得差不多了，可以让别的线程使用CPU了。（但这只是一个暗示，没有任何机制保证它将会被采纳）
+调用yield()时，也是在建议具有相同优先级的其他线程可以运行
+
+对于任何重要的控制或在调整应用时，都不能依赖于yield()！（经常被误用）
+
+
+8、后台线程（Daemon Thread）/ˈdi:mən/
+所为后台线程，是指在程序运行的时候在后台提供一种通用服务的线程，并且这种线程并不属于程序中不可或缺的部分。
+当所有的非后台线程结束时，程序也就终止了，同时会杀死进程中的所有后台线程。反过来说，只要有任何非后台线程还在运行，程序就不会终止。
+比如，执行main()的就是一个非后台线程。
+
+必须在线程启动之前调用setDaemon()方法，才能把它设置为后台线程。
+
+通过编写定制的ThreadFactory可以定制由Executor创建的线程的属性（后台、优先级、名称）：
+public class DaemonThreadFactory implements ThreadFactory {
+    public Thread newThread(Runnable r) {
+        Thread t = new Thread(r);
+        t.setDaemon(true);
+        return t;
+    }
+}
+
+可以用一个新的DaemonThreadFactory作为参数传递给Executor.newCahcedThreadPool()：
+ExecutorService exec = Executor.newCachedThreadPool(new DaemonThreadFactory);
+
+可以看下通过Executor创建ExecutorService对象的源码！ @Todo
+
+
+9、编码的变体
+继承Thread和实现Runnable接口：
+并没有什么特别的差异，只是实现接口使得你可以继承另一个不同的类。
+
+优选Executor而不是显式地创建Thread对象？ @Todo
+在构造器中启动线程可能会变得很有问题，因为另一个任务可能会在构造器结束之前开始执行，这意味着该任务能够访问处于不稳定状态的对象。
+
+
+10、术语
+执行的任务 和 驱动它的线程
+
+Task
+
+
+11、加入一个线程
+一个线程可以在其他线程直上调用join方法，其效果是等待一段时间直到第二个线程结束才继续执行。
+如果某个线程调用t.join()（t是另一个线程，即目标线程），此线程将被挂起，直到目标线程t结束才恢复（即t.isAlive()返回false）。
+也可以在调用join()时带上一个超时参数，这样如果目标线程在这段时间到期还没有结束的话，join()方法总能返回。
+对join()方法的调用可以被中断，做法是在调用线程上调用interrupt方法，这时需要使用到try-catch子句。
+
+Thread A:
+...
+public void run() {
+    try {
+        // sleep...
+        ...
+    } catch(InterruptedException e) {
+        // was interrupted.
+    }
+}
+...
+
+Thread B:
+...
+public void run() {
+    try {
+        A.join();
+        ...
+    } catch(InterruptedException e) {
+        // was interrupted.
+    }
+}
+...
+
+B.start(); // B执行是，因为调用了A.join，所以B被挂起，等待A执行完毕
+A.interrupt(); // A被中断，B将不再等待，恢复执行
+
+
+CyclicBarrier类，可能比最初的线程类库中的join()更加合适。
+
+
+12、线程组（“最好把线程组看成是一次不成功的尝试，你只要忽略它就好了”）
+线程组持有一个线程集合。
+
+诺贝尔经济学奖得主Joshua Bloch的生活哲学，承诺升级理论（The Theory of Escalating Commitment）：
+“继续错误的代价由别人来承担，而承认错误的代价由自己承担。”
+
+
+13、异常捕获
+如何捕获线程中逃逸的异常：
+Java SE5中的新接口：Thread.UncaughtExceptionHandler，允许在每个Thread对象上都附着一个异常处理器
+Thread.UncaughtExceptionHandler.uncaughtException()会在线程因未捕获的异常而临近死亡时被调用。
+为了使用它，需要创建新的ThreadFactory，给新创建的Thread对象附着一个Thread.UncaughtExceptionHandler。（Thread的setUncaughtExceptionHandler(自定义的未捕获异常处理器)方法）
+自定义的未捕获异常处理器：
+实现UncaughtExceptionHandler接口，重写uncaughtException方法。
+同样，需要将新的ThreadFactory传递给Executor创建新的ExecutorService对象。
+
+更简单的方式：
+在Thread类中设置一个静态域，并将这个处理器设置为默认的未捕获异常处理器（会先检查线程是否有专有的未捕获异常处理器）：
+Thread.setDefaultUncaughtExceptionHandler(自定义的未捕获异常处理器);
+
+
+
+>>共享受限资源
+单线程程序——在问题域求解的单一实体，每次只能做一件事情。
+
+1、不正确的访问资源
+示例程序：检查偶数生产的有效性 21.3 P674
+
+递增程序自身也需要很多个步骤，并且在递增过程中任务可能会被线程机制挂起——也就是说，在java中，递增不是原子性的操作。
+
+2、解决共享资源竞争
+
+使用线程时的基本问题：你永远都不知道一个线程何时在运行。这正是编写并发程序时需要处理的问题。
+
+序列化访问共享资源的方案处理并发程序线程冲突问题，意味着给定时刻只允许一个任务访问共享程资源。
+
+互斥量（mutex）：
+锁语句
+
+synchronized关键字：
+    当任务要执行被synchronized关键字保护的代码片段的时刻，它将检查锁是否可用，然后获取锁，执行代码，释放锁。
+
+共享资源一般是以对象形式存在的内存片段，但也可以是文件、输入/输出端口，或者是打印机。要控制对共享资源的访问，得先把它包装进一个对象，然后把所有要访问这个资源的方法标记为synchronized。
+
+synchronized放在方法前面，对于某个特定对象来说，其所有synchronized方法共享同一个锁，这可以被用来防止多个任务同时访问被编码为对象内存。
+
+注意，在使用并发时，将域设置为private是非常重要的，否则，synchronized关键字就不能防止其他任务直接访问域，这样就会产生冲突。
+
+针对每个类，也有一个锁（作为类的Class对象的一部分），所以synchronized static方法可以在类的范围内防止对static数据的并发访问。
+
+应该什么时候同步呢？运用Brian（《Java Concurrency Practice》的作者）的同步规则：
+    如果你正在写一个变量，它可能接下来将被另一个线程读取，或者正在读取一个上一次已经被另一个线程写过的变量，那么你必须使用同步，并且，读写线程都必须用相同的监视器锁同步。
+
+每个访问临界共享资源的方法都必须被同步，否则它们就不会正确地工作。
+
+使用显式的Lock对象：
+Java SE5的java.util.concurrent类库中包含有定义在java.util.concurrent.locks中的显式的互斥机制。
+Lock对象必须被显式地创建、锁定和释放。与内建的锁相比，代码缺乏优雅性，但是对于解决某些类型的问题，它更加灵活。
+
+(1、使用synchronized关键字时，某些事物失败了，那么就会抛出一个异常。但是你没有机会去做任何清理工作，以维护系统使其处于良好状态。幽冷显式的Lock对象，就可以使用finally子句将系统维护在正确的状态了。
+
+Lock lock = new ReentranLock();  // ReentranLock implements Lock.
+
+lock.lock();
+try {
+    ...
+    return ...; // return必须放在try子句中，确保unlock()不会过早发生
+} finally {
+    ... // 出现异常可以做些清理工作
+    lock.unlock;
+}
+
+
+(2、用synchronized关键字不能尝试着获取锁且最终获取锁会失败，或者尝试着获取锁一段时间，然后放弃它，要实现这些，必须使用concurrent类库。
+ReentrantLock lock = new ReentrantLock();
+
+// untimed 尝试获取锁，失败后可以做其他事，无需等待直至锁被释放
+...
+boolean captured = lock.tryLock();
+try {
+    ...
+} finally {
+    if (captured) {
+        lock.unlock();
+    }
+}
+
+// timed 指定时间内尝试获取锁，失败了就不再尝试，可以做其他事，无需再等待
+...
+try {
+    boolean captured = lock.tryLock(2, TimeUnit.SECONDS); // 尝试获取锁2秒直到失败
+} catch(InterruptedException e) {
+    ...
+}
+try {
+    ...
+} finally {
+    if (captured) {
+        lock.unlock();
+    }
+}
+
+
+(3、显示的Lock对象在加锁和释放锁方面，相对于内建的synchronized锁来说，还赋予了更加细粒度的控制力。
+这个对于实现专有同步结构是很有用的，例如用于遍历链接列表中的节点的节点传递的加锁机制（也称为锁耦合），这种遍历代码必须在释放当前节点的锁之前捕获下一个节点的锁。
+@Todo 可以看下相关的源代码
+
+
+3、原子性和易变性
+
+原子性：
+原子操作可由线程机制来保证其不可中断，专家级的程序员可以利用这一点来编写无锁的代码，这些代码不需要被同步。
+
+原子性可以应用于long和double之外的所有基本类型之上的“简单操作”。对于读取和写入除long和double之外的基本类型变量这样的操作，可以保证它们会被当做不可分（原子）的操作来操作内存。
+JVM可以将64位（long和double变量）的读取和写入当做两个分离的32位操作来执行，这就产生了在一个读取和写入操作中间发生上下文切换，从而导致不同的任务可以看到不正确的可能性（有时被称为字撕裂，因为你可能会看到部分被修改过的数值）。
+当你定义long和double变量时，如果使用volatile关键字，就会获得（简单的赋值和返回操作的）原子性（Java SE5及之后）。
+
+依赖于原子性是很棘手且很危险的。
+Goetz测试：如果你可以编写用于现代微处理器的高性能JVM，那么就有资格去考虑是否可以避免同步。
+
+可视性：
+volatile关键字确保了应用中的可视性。如果你将一个域声明为volatile的，那么只要这个域产生了写操作，那么所有的读操作就都可以看到这个修改。即便使用了本地缓存，情况也确实如此，volatile域会立即被写入到主存中，而读取操作就发生在主存中。
+
+理解原子性和易变性是不同的概念这一点非常重要。在非volatile域上的原子操作不必刷新到主存中去，因此其他读取该域的任务也不必看到这个新值。
+如果多个任务在同时访问某个域，那么这个域就应该是volatile的，否则，这个域就应该只能经由同步来访问。同步也会导致向主存中刷新，因此如果一个域完全由synchronized方法或语句块来防护，那就不必将其设置是volatile的。
+
+[1. 访问共享状态之前先要获得锁, Lock.lock()方法能够获得锁，而获得锁的操作和volatile变量的读操作一样，会强制使CPU缓存失效，强制从内存读取变量。
+2. Lock.unlock()方法释放锁时，和写volatile变量一样，会强制刷新CPU写缓冲区，把缓存数据写到主内存]
+
+一个任务所作的任何写入操作对这个任务来说都是可视的，因此如果只需要在这个任务内部可视，就不需要将其设置为volatile。
+
+使用volatile而不是synchronized的唯一安全的情况是类中只有一个可变的域。首选还是应该是使用synchronized关键字，这是最安全的方式。
+
+原子操作：
+对域中的值做赋值和返回操作通常都是原子性的。
+
+java中i++、i+=3这样的操作并非是原子操作。（比如执行i++过程中，未执行完但上下文发生切换交由另一个线程，该线程进行对i的读取，如果未处理好同步，则会出现并发问题，即便将i定义为volatile，也只能保证另一个线程的可视性，不能保证i++的原子性！）
+
+
+共享资源中往往可视性和原子性都要考虑到！
+
+
+4、原子类
+Java SE5中引入了诸如AtomicInteger、AtomicLong、AtomicReference等特殊的原子性变量类，它们提供下面形式的原子性条件更新操作：
+boolean compareAndSet(expectedValue, updateValue);
+
+如偶数生产的示例使用AtomicInteger替代两次++，在多线程中则不需要对next方法进行同步了！
+...
+AtomicInteger currentEvenValue = new AtomicInteger();
+public int next() {
+    return currentEvenValue.addAndGet(2); // 原子操作+2并返回新值
+}
+...
+
+而lazySet()的用法就是在不需要让共享变量的修改立刻让其他线程可见的时候，以设置普通变量的方式来修改共享状态，可以减少不必要的内存屏障，从而提高程序执行的效率。
+
+
+这些类被调整为可以使用在某些现代处理器上的可获得的，并且是在机器级别上的原子性，因此使用它们时，通常不用担心。
+对于常规编程来说，它们很少会派上用场，但是在涉及性能调优时，它们就大有用武之地了。
+
+
+5、临界区（同步控制块）
+synchronized代码段——临界区（critical section）（防止多个线程同时访问方法内部的部分代码而不是防止访问整个方法）
+
+synchronized(syncObject) {
+    ... // This code can be accessed by only one task at a time.
+}
+
+当然，也可以使用Lock对象创建临界区！
+
+
+6、在其他对象上同步
+synchronized块必须给点一个在其上运行同步的对象，并且最合理的方式是，使用其方法正在被调用的当前对象：synchronized(this)，这种方式中，如果获得了synchronized块上的锁，那么该对象其他的synchronized方法和临界区就不能被调用了。
+
+有时必须在另一个对象上同步，但是如果要这么做，就必须确保所有相关的任务都是在同一个对象上同步的！
+synchronized代码块的同步对象可以不指定this，那么和synchronize方法之间就相互独立，不被对方阻塞了。
+
+
+7、线程本地存储
+防止任务在共享资源上产生冲突的第二种方式就是根除对变量的共享。
+线程本地存储是一种自动化机制，可以为使用相同变量的每个不同的线程都创建不同的存储。
+如果有5个线程都要使用变量x所表示的对象，那线程本地存储就会生成5个用于x的不同的存储快，且它们使得你可以将状态与线程关联起来。
+
+ThreadLocal对象通常当作静态域存储，在创建ThreadLocal时，只能通过get()和set()方法来访问该对象的内容，其中，get()方法将返回与其线程相关联的对象的副本，而set()会将参数插入到为其线程存储的对象中，并返回存储中原有的对象。
+
+ORM框架中数据库的Connection对象还是什么貌似用到，可以看下代码@Todo
+
+
+
+>>终结任务
+
+1、仿真程序——装饰性花园
+P692
+
+// Class Xx that implements Runnable
+...
+private static volatile boolean canceled = false;
+public static void cancel() {
+    calceled = true;
+}
+public void run() {
+    while(!canceled) {
+        ...
+        TimeUnit.MILLISECONDS.sleep(100); // 执行状态会变为阻塞状态，如果canceled已变成true，也需要等待线程唤醒，即达到sleep()时间，才会终止循环。
+    }
+}
+...
+
+// Main function execute thread
+...
+Xx.cancel();
+exec.shutdown();
+// ExecutorService.awaitTermination()等待每个任务结束，如果所有的任务子啊超时时间达到之前全部结束，则返回true，否则返回false。
+if (!exec.awaitTermination(250, TimeUnit.MILLISECONDS)) {
+    print("Some tasks were not terminated！");
+}
+
+2、在阻塞时终结
+有时必须终止被阻塞的任务
+
+线程状态，一个线程可以处于以下四种状态之一：
+（1、新建（New）
+（2、就绪（Runnable）
+（3、阻塞（Blocked）
+（4、死亡（Dead）
+
+一个任务进入阻塞状态，可能有以下原因：
+（1、通过调用sleep(milliseconds)使任务进入休眠状态，这种情况下，任务在指定的时间内不会运行；
+（2、通过调用wait()使线程挂起，直到线程得到了notify()和notifyAll()消息（或者在Java SE5的java.util.concurrent类库中等价的signal()或signalAll()消息），线程才会进入就绪状态；
+（3、任务在等待某个输入/输出完成；
+（4、任务试图在某个对象上调用其同步控制方法，但是对象锁不可用，因为另一个任务已经获取了这个锁。
+
+suspend()和resume()用来阻塞和唤醒线程因为可能会导致死锁而被废止了；stop()也被废止了（不释放线程获得的锁，并且如果线程处于不一致的状态（受损状态），其他任何任务可以在这种状态下浏览并修改它们）。
+
+3、中断
+
+Thread类包含interrupt方法，可以终止被阻塞的任务，这个方法将设置线程的中断状态。如果一个线程已经被阻塞，或者试图执行一个阻塞操作，那么设置这个线程的中断状态将抛出InterruptedException。
+当抛出该异常或者该任务调用Thread.interrupt()时，中断状态被复位，正如你将看到的，Thread.interrupted()提供了离开run()循环而不抛出异常的第二种方式。
+
+新的concurrent类库中似乎在避免对Thread对象的直接操作，转而尽量通过Executor来执行所有操作。
+如果你在Executor上调用shutdownNow()，那么它将发送一个interrupt()调用给它启动的所有线程。
+如果有时希望只中断某一个任务，如果使用Executor，那么通过调用submit()而不是executor()来启动任务，就可以持有该任务的上下文。submit()将返回一个泛型Future<?>，可以在其上调用cancel()中断某个特定的任务。如果将true传递给cancel()，那么它就会拥有在该线程上调用Interrupt()以停止这个线程的权限。
+
+但是：I/O和在synchronized块上的等待是不可中断的，sleep()（或者任何要求抛出InterruptedException的调用）的可以。
+
+
+@Todo
+如何中断I/O的等待呢？
+P697
+
+另外，nio类中提供了更人性化的I/O中断，被阻塞的nio通道会自动地响应中断。
+
+被互斥所阻塞
+同一个互斥被同一个任务多次获得
+同一线程，调用synchronized方法，获取锁，然后调用其他synchronized方法，因为是同一个对象，公用同一个锁，所以可以调用。
+两个synchronized方法之间相互调用，如果无法停止，那么就会锁住。
+
+两个任务循环等待对方的锁，那就是死锁了。
+
+只要任务以不中断的方法被阻塞，那么都有潜在的会锁住程序的可能。Java SE5并发类库中添加了一个特性，即在ReentrantLock上阻塞的任务具备被中断的能力，这与在synchronized方法或临界区上的阻塞的任务完全不同。
+Lock lock = new ReentrantLock();
+
+lock.lockInterruptibly(); // 如果当前线程未被中断，则获取锁
+// 如果当前线程在进入此方法时已经设置了该线程的中断状态，或者在等待获取锁的同时被中断。则抛出 InterruptedException，并且清除当前线程的已中断状态。
+
+如果任务在lock.lockInterruptibly()中阻塞，那么调用interrupt()方法是可以中断阻塞的。
+
+
+4、检查中断
+当线程上调用了interrupt()，中断发生的唯一时刻是在任务要进入到阻塞操作中或者已经在阻塞操作内部时。
+如果你调用interrupt()以停止某个任务，那么在run()循环碰巧没有产生任何阻塞调用的情况下，你的任务将需要第二种方式来退出。
+
+通过调用interrupted()来检查中断状态，这不仅可以告诉你interrupt()是否被调用过，而且还可以清除中断状态。
+@Todo 我对这句话的理解：如果当前线程已经调用了interrupt()，当前非阻塞，只能等到调用Thread.interrupted()来判断是否已经调用过interrupt()，然后会清除中断状态，这意味着如果当次还进入循环，下次循环判断时就返回false了，这样防止如果返回true还进入循环时，发生阻塞操作不会直接中断抛出异常，因为调用Thread.interrupted()已经知道调用了interrupt()，再来一次阻塞中断就是所谓的重复通知吧。
+@Todo 下面提到的并发结构是指？防重处理吗？？？
+清除中断状态可以确保并发结构不会就某一个任务被中断这个问题通知你两次，你可以经由单一的InterruptedException（只有阻塞时调用了interrupt()才直接中断，抛出异常）或单一的成功的Thread.interrupted()测试来得到这种通知。
+
+注意一点：阻塞时调用interrupt中断后，也会清除中断状态，抛出InterruptedException。
+
+
+
+P701
+
+如果阻塞中调用了interrupt()，那么可以立即中断，否则继续循环，检查到Thread.interrupted()为true时停止循环。
+while(!Thread.interrupted()) {
+    try {
+        ...
+    } finally {
+        ... // 如果前面创建的对象需要清理，必须有try-finally，无论是在阻塞时中断还是while上的判断结束循环，清理都会发生
+    }
+}
+
+被设计用来响应interrupt()的类必须建立一种策略，来确保它将保持一致的状态。
+这通常意味着所有需要清理的对象创建操作的后面，都必须紧跟try-catch子句，从而使得无论run()循环如何退出，清理都会发生。
+
+
+
+>>线程之间的协作
+
+1、wait()与notifyAll()
+wait()会在等待外部世界产生变化的时候将任务挂起，并且只有在notify()或notifyAll()发生时，即表示发生了某些感兴趣的事物，这个任务才会被唤醒并去检查所产生的变化。
+当一个任务在方法里遇到了对wait()的调用的时候，线程的执行被挂起，对象上的锁会被释放，这就意味着另一个任务可以获取这个锁，因此该对象中的其他synchronized方法可以在wait()期间被调用，这些其他方法通常将产生变化，而这种改变正是使被挂起的任务重新唤醒所感兴趣的变化。
+
+有两种形式的wait()：
+1、接受毫秒数作为参数，可以通过notify()、notifyAll()， 或者令时间到期，从wait()中恢复执行；
+2、不接收任何参数，这种wait()将无限等待下去，直到接收到notify()、notifyAll()消息；
+
+在wait()期间对象锁是释放的。
+
+wait()、notify()、notifyAll()有个比较特殊的方面，那就是这些方法是基类Object的一部分，而不是属于Thread的一部分。
+因为这些方法操作的锁也是所有对象的一部分，所以，你可以把wait()放进任何同步控制方法里，而不用考虑这个类是继承Thread还是实现了Runnable接口。
+实际上，只能在同步控制方法或同步控制块里调用wait()、notify()、notifyAll()。如果在非同步控制方法里调用这些方法，程序可以编译，但是运行时，会得到IllegalMonitorStateException异常，并伴随着一些含糊的消息，比如“当前线程不是拥有者”等。
+
+可以让另一个对象执行某种操作以维护其自己的锁，要这么做的话，必须首先得到对象的锁。比如，如果要向对象x发生notifyAll()，那么就必须在能够取得x的锁的同步控制块中这么做：
+synchronized(x) {
+    x.notifyAll();
+}
+
+示例见P704
+
+必须用一个感兴趣的条件的while循环包围wait()，这很重要，因为：
+1、可能有多个任务出于相同的原因在等待同一个锁，而第一个唤醒任务可能会改变这种状况，如果属于这种情况，那么这个任务应该被再次挂起，直至其感兴趣的条件发生变化；（同一条件，不同任务先唤醒并改变条件）
+2、在这个任务从其wait()中被唤醒的时刻，有可能会有某个其他的任务已经做出了改变，而从使得这个任务在此是不能执行，或者执行其操作已显得无关紧要。因此，应该通过再次调用wait()来将其重新挂起；（同一条件，和1不知道啥区别@Todo）
+3、也有可能某些任务出于不同的原因在等待你的对象上的锁（在这种情况下必须使用notifyAll）。在这种情况下，你需要检查是否已经由正确的原因唤醒，如果不是，就再次调用wait()。（不同条件，不同任务）
+
+错失的信号
+T1：
+synchronized(sharedMonitor) {
+    <setup condition for T2>
+    sharedMonitor.notify();
+}
+
+T2：
+while(someCondition) {
+    synchronized(sharedMonitor) {
+        sharedMonitor.wait();
+    }
+}
+
+先执行T2，并进入wait，执行T1，改变条件，调用notify，此是T2被唤醒，但someCondition可能读到旧值（可能重排序导致），导致T2进入死循环，出现死锁
+正确的方式是将T2的while放入synchronized代码块里：
+synchronized(sharedMonitor) {
+    while(someCondition) {
+        sharedMonitor.wait();
+    }
+}
+
+这样只有T2继续执行需等待T1释放锁，这时someCondition取到的一定是最新的！
+
+
+2、notify()与notifyAll()
+调用notifyAll()比只调用notify()更安全，使用notify()而不是notifyAll()是一种优化。
+使用notify()时，在众多等待同一锁的任务中只有一个会被唤醒，因此如果你希望使用notify()，就必须保证被唤醒的是恰当的任务。
+另外，为了使用notify()，所有任务必须等待相同的条件。
+如果使用notify()，当条件发生变化时，必须只有一个任务能够从中受益。
+最后这些限制对所有可能存在的子类都必须总是起作用的。
+如果这些规则中有任何一条不满足，那么就必须使用notifyAll()而不是notify()。
+
+注意点：notifyAll()因某个特定锁而被调用时，只有等待这个锁的任务才会被唤醒，并非所有正在等待的任务。
+
+问题：notify()在多任务中只唤醒一个有什么规则吗？ @Todo
+
+
+3、生产者和消费者
+例子：一个饭店，有一个厨师和一个服务员，服务员必须等待厨师准备好膳食，当厨师准备好时，他会通知服务员，之后服务员上菜，然后返回继续等待。
+这是一个任务协作的示例：厨师代表生产者，而服务员代表消费者，两个任务必须在膳食被生产和消费时进行握手，而系统必须以有序的方式关闭。
+P709
+
+使用显式的Lock和Condition对象
+在Java SE5的java.util.concurrent类库中还有额外的显式工具可以用来重写前面的例子。
+使用互斥并允许任务挂起的基本类是Condition，你可以通过Condition上调用await()来挂起一个任务。
+让外部条件发生变化时，意味着某个任务应该继续执行时，你可以通过调用signal()来通知这个任务，从而唤醒一个任务，或者调用signalAll()来唤醒所有在这个Condition上被其自身挂起的任务（与使用notifyAll()相比，signalAll()是更安全的方式）。
+@Todo signalAll()比notifyAll()更加安全体现在哪里呢？
+
+使用方法（需要用显式的Lock替换synchronized）：
+Condition condition = lock.newCondition();
+condition.await();
+condition.signalAll();
+任务在可以调用await()、signal()或signalAll()之前，必须拥有锁（lock.lock()，就像是一定要在synchronized方法或者代码块里一样）
+
+一般来说：Lock和Condition对象只在更加困难的多线程问题中才是必需的。
+
+
+4、生产者-消费者与队列
+wait()和notifyAll()方法以一种非常低级的方式解决了任务互操作问题，即每次交互时都握手。在许多情况下，你可以瞄向更高的抽象级别，使用同步队列来解决任务协作问题，同步队列在任何时刻都只允许一个任务插入或移除元素。
+在java.util.concurrent.BlockingQueue接口中提供了这个队列，这个接口有大量的标准实现。
+你通常可以使用LinkedBlockingQueue，它是一个无界队列，还可以使用ArrayBlockingQueue，它具有固定的尺寸，因此你可以在它被阻塞之前，向其中放置有限数量的元素。
+
+如果消费者任务试图从阻塞队列中获取对象，而该队列此是为空，那么这些队列还可以挂起消费者任务，并且当有更多的元素可用时恢复消费者任务。
+阻塞队列可以解决非常大量的问题，而其方式与wait()和notifyAll()相比，则简单并可靠得多。
+
+阻塞队列和普通队列的区别？
+@Todo
+1、内部处理了同步（同一时刻要么取值要么设值）
+2、可阻塞（wait()和notifyAll()的实现）
+
+土司BlockingQueue：有一台机器具有三个任务，制作吐司、一个给吐司抹黄油，另一个在抹过黄油的吐司上涂果酱。
+P715
+
+每个任务使用一个BlockingQueue子类（如无界的LinkedBlockingQueue），每次制作或加工后的吐司放入队列，依次传递给下一个任务即可。（后面两个加工的任务从前面任务传入的队列取值，若队列为空则阻塞，表明新的吐司还没制作完或者加工完）
+另外每个任务处理无需同步处理，因为对阻塞队列的操作都是线程安全的。
+
+思考：这种场景队列是否线程安全有影响吗？@Todo
+
+5、任务间使用管道进行输入/输出
+通过输入/输出在线程间进行通信通常很有用。提供线程功能的类库以“管道”的形式对线程间的输入/输出提供了支持。
+它们在Java输入/输出类库中的对应物就是PipedWriter（允许任务向管道写）和PipedReader类（允许不同任务从同一管道中读取）。
+这个模型可以看成是“生产者—消费者”问题的变体，这里的管道就是一个封装好的解决方案。管道基本上是一个阻塞队列，存在于多个引入BlockingQueue之前的Java版本中。
+
+P717
+
+
+
+>>死锁
+1、经典的死锁例证：哲学家就餐问题
+5个哲学家，作为哲学家，他们很穷，只买了5根筷子，5人围座在一张桌子周围，没人左右一根筷子。如果一个哲学家左边或者右边已经有人在使用筷子了，那么他必须等待，停下来思考。
+分析：
+    如果每个哲学家都先拿起自己左边的筷子（或者先拿起右边的筷子），那么死锁就可能出现了（思考的时间越短更快发生死锁）！
+
+死锁出现的必要条件：
+    1、互斥条件（资源不共享，一根筷子同时只能一个哲学家用）
+    2、有任务持有一个资源等待另一个被别的任务持有的资源（都拿着左边的筷子，等着右边的放下左边的筷子）
+    3、资源不能被任务抢占（哲学家很有礼貌）
+    4、必须有循环等待
+
+如何避免死锁：
+    前面的人先拿左边的筷子，最后一个人先拿右边的筷子
+
+思考：
+    如果当哲学家用完筷子之后，把筷子放到一个筷笼里，当哲学家就餐的时候，他们就从筷笼里去除两根可用的筷子，这样消除了死锁的可能吗？可以仅仅通过给减少可用的筷子数目就重新引入死锁吗？
+
+顺序问题导致的死锁：
+1、控制顺序
+2、轮询重试直到不死锁为止（顺序正确为止）
+3、定时锁（到时间失败了就失败了，不死锁）
+
+
+>>并发类库
+1、CountDownLatch（倒计时门闩）
+N个A任务需要在B任务执行之前调用（比如系统初始化中，有些必要任务需先行处理，之后才能初始其他任务）
+定义一个初始计数值N，任务B执行前调用await()方法后即被阻塞至计数值为0（除非线程被中断），每个A任务执行完后调用countDown()方法后计数值减1。
+N->0则表示N个A任务已经执行完成，被阻塞的B任务await()得到返回，继续往下执行了。
+当然也有boolean await(long timeout, TimeUnit unit)方法可以指定超时时间，如果超出了指定的等待时间，则返回值为false。
+
+
+2、CyclicBarrier（循环栅栏） /ˈsaɪklɪk/ /ˈbarēər/
+初始化支持一个可选的runnable参数，在一组线程中的最后一个线程到达之后（但在释放所有线程之前），该命令只在每个屏障点运行一次。
+await()，在所有参与者都已经在此barrier上调用await方法之前，将一直等待。
+runnable在初始化时会执行一次，然后在所有线程调用await之后会执行，然后所有线程从等待中转为继续开始。
+
+想象一个游戏类似于这个CyclicBarrier：
+A、B、C、D比赛跳远，裁判员每喊一次“跳”（执行runnable的线程），四人同时跳一次然后停下(await)，然后等裁判员继续喊“跳”，接着跳一次然后停下……直到最后裁判员喊停为止，看谁跳的最远。
+
+Think in java中给出的赛马游戏也很类似。
+
+
+3、DelayQueue（延迟队列？） /kju:/
+无界的BlockingQueue，用于放置实现了Delayed接口的对象！（为了排序，Delayed接口还继承了Comparable接口，因此必须实现compareTo方法）
+
+BlockingQueue（阻塞队列）：
+    支持两个附加操作的 Queue，这两个操作是：获取元素时等待队列变为非空，以及存储元素时等待空间变得可用。
+
+    BlockingQueue 方法以四种形式出现，对于不能立即满足但可能在将来某一时刻可以满足的操作，这四种形式的处理方式不同：第一种是抛出一个异常，第二种是返回一个特殊值（null 或 false，具体取决于操作），第三种是在操作可以成功前，无限期地阻塞当前线程，第四种是在放弃前只在给定的最大时间限制内阻塞。下表中总结了这些方法：
+
+        抛出异常	     特殊值	    阻塞	        超时
+    插入	add(e)	    offer(e)	put(e)	offer(e, time, unit)
+    移除	remove()	poll()	    take()	poll(time, unit)
+    检查	element()	peek()	    不可用	不可用
+    BlockingQueue 不接受 null 元素。试图 add、put 或 offer 一个 null 元素时，某些实现会抛出 NullPointerException。null 被用作指示 poll 操作失败的警戒值。
+
+    BlockingQueue 可以是限定容量的。它在任意给定时间都可以有一个 remainingCapacity，超出此容量，便无法无阻塞地 put 附加元素。没有任何内部容量约束的 BlockingQueue 总是报告 Integer.MAX_VALUE 的剩余容量。
+
+注意点：
+其中的对象只能在其到期时才能从队列中取出：
+ E	peek()
+          获取但不移除此队列的头部；如果此队列为空，则返回 null。 // 只能获取不能取出，不管是否到期
+ E	poll()
+          获取并移除此队列的头，如果此队列不包含具有已到期延迟时间的元素，则返回 null。
+ E	poll(long timeout, TimeUnit unit)
+          获取并移除此队列的头部，在可从此队列获得到期延迟的元素，或者到达指定的等待时间之前一直等待（如有必要）。
+
+ E	take()
+          获取并移除此队列的头部，在可从此队列获得到期延迟的元素之前一直等待（如有必要）
+
+这种队列是有序的，即队头对象的延迟到期的时间最长；
+从队列中取出的将是最“紧急”的任务（到期时间最长的任务）；
+
+注：这里的延期时间最长应该是指已经延期最长的，不是可延期最长的，注意！！！ @Todo 测试一下
+
+插入方式：
+boolean add(E e)
+          将指定元素插入此延迟队列中。 // 不排序吗？
+void put(E e)
+          将指定元素插入此延迟队列。
+boolean	offer(E e)
+boolean offer(E e, long timeout, TimeUnit unit)
+          将指定元素插入此延迟队列中。由于该队列是无界的，所以此方法不会阻塞。
+
+
+
+4、PriorityBlockingQueue（优先阻塞队列） /praɪˈɒrəti/
+这是一个很基础的优先级队列，它具有可阻塞的读取操作。队列的阻塞特性提供了所有必需的同步，多个线程同时访问队列时不需要任何显式的同步
+——不比考虑当你从这种队列中读取时，其中是否有元素，因为这个队列在没哟元素时，将直接阻塞读取者。
+
+
+5、ScheduledThreadPoolExecutor /'skedʒəld/ /ɪgˈzekjətə(r/
+ScheduledThreadPoolExecutor提供在预定时间运行任务的服务，通过使用schedule()（运行一次任务）或者scheduleAtFixedRate()（每隔规定的时间重复执行任务），可以将Runnable对象设置为在将来的某个时刻执行。
+
+
+6、Semaphore（计数信号量） /ˈseməfɔ:(r)/
+正常的锁（来自concurrent.locks或内建的synchronized锁）在任何时候都只允许一个任务访问一项资源，而计数信号量允许n个任务同时访问这个资源。你还可以将信号量看作是在向外分发使用资源的“许可证”，尽管实际上没有使用任何许可证对象。
+比较详细的应用可以看THINK IN JAVA 21.7.6
+
+一个计数信号量。从概念上讲，信号量维护了一个许可集。如有必要，在许可可用前会阻塞每一个 acquire()，然后再获取该许可。每个 release() 添加一个许可，从而可能释放一个正在阻塞的获取者。但是，不使用实际的许可对象，Semaphore 只对可用许可的号码进行计数，并采取相应的行动。
+
+Semaphore 通常用于限制可以访问某些资源（物理或逻辑的）的线程数目
+
+思考：数据库连接池的实现？
+
+
+7、Exchanger（交换器？）
+Exchanger是在两个任务之间交换对象的栅栏。当这些任务进入栅栏时，它们各自拥有一个对象，当它们离开时，它们都拥有之前由对象持有的对象。
+Exchanger典型应用场景是：一个任务在创建对象，这些对象的生产代价很高昂，而另一个任务在消费这些对象。通过这个方式，可以有更多的对象在被创建的同时被消费。
+
+    V exchange(V x)
+          等待另一个线程到达此交换点（除非当前线程被中断），然后将给定的对象传送给该线程，并接收该线程的对象。
+
+
+8、SynchronousQueue
+这是一种没有内部容量的阻塞队列，因此每个put()都必须等待一个take()，反之亦然。这就好像你在把一个对象交给某人——没有任何桌子可以放置这个对象，因此只有在这个人伸出手，准备好接收这个对象时，你才能工作。
+
+
+
+>>性能调优
+
+1、比较各种互斥技术
+synchronized关键字和Java SE5中新的Lock和Atomic类
+
+
+2、免锁容器
+Vector、Hashtable这类早期容器具有许多synchronized方法，当它们用于非多线程的应用程序中时，便会导致不可接受的开销。
+
+Java SE5a特别添加了新的容器，通过使用更灵巧的技术来消除加锁，从而提高线程安全的性能。
+这些免锁容器背后的通用策略是：
+对容器的修改可以和读取操作同时发生，只要读取者只能看到完成修改的结果即可。
+修改是在容器数据结构的某个部分的一个单独的副本（有时是整个数据结构的副本）上执行，并且这个副本在修改过程中是不可视的。
+只有当修改完成时，被修改的结构才会自动地与主数据结构进行交换，之后读取者就可以看到这个修改了。
+
+CopyOnWriteArrayList、CopyOnWriteArraySet、ConcurrentHashMap、ConcurrentLinkedQueue
+
+多个迭代器同时遍历和修改时，不会抛出ConcurrentModificationException。
+
+
+关于同步的容器和并发类库的容器进行测试，编写测试工具
+synchronized ArrayList VS CopyOnWriteArrayList
+synchronized HashMap VS ConcurrentHashMap
+
+
+3、乐观加锁
+通过Atomic类执行所谓的“乐观加锁”，可以使用compareAndSet()方法（CAS方法），将旧值和新值一起提交给这个方法，如果旧值与它在Atomic对象中发现的值不一致，那么这个操作就失败——这意味着某个其他的任务已经于此操作执行期间修改了这个对象。
+这种方式数据为未锁定状态，通过使用Atomic来代替synchronized和Lock，可以获得性能上的好处。
+注意点：
+如果compareAndSet()操作失败，就必须决定做些什么，可以重试这个操作，可以忽略这次失败直接结束……
+
+
+4、ReadWriteLock
+ReadWriteLock对向数据结构相对不频繁地写入，但是有多个任务要经常读取这个数据结构的这类情况进行了优化。
+ReadWriteLock使得你可以同事有多个读取者，只要它们都不试图写入即可。如果写锁已经被其他任务持有，那么任何读取者都不能访问，直到写锁释放为止。
+
+ReadWriteLock是否可以提高性能是完全不确定的，取决于数据被读取的频率和被修改的频率相比较结果，读取和写入操作的时间（锁将更复杂，因此短操作并不能带来好处），有多少线程竞争以及是否在多处理器上运行等因素。
+要知道是否给程序带来好处的方式就是用试验来证明！
+
+ReentrantReadWriteLock：
+支持与 ReentrantLock 类似语义的 ReadWriteLock 实现
+
+ReadWriteLock、ReentrantLock @Todo
+
+
+
+>>活动对象（@Todo）
+
+>>21.8 P741 仿真相关程序示例可以看看 @Todo
+
+
+
+>>java内存模型 《Java Concurrency in Practice》 P277
+
+内存模型
+1、内存模型
+
+2、重排序
+
+3、Happen-Before规则
+
+4、借助同步
+
+
+发布
+1、不安全的发布
+
+2、安全的发布
+
+3、安全初始化模型
+线程安全的延迟初始化（同步方法初始化，常见的getInstance方法）
+提前初始化（静态变量初始化）
+延长初始化占位类模式（静态内部类的静态变量被调用时初始化）
+
+4、双重检查加锁（尽量避免）
+双重检查和volatile结合使用才能真正安全（类似getInstance方法，对象不加volatile修饰的话，尽管不会多次new对象，但可能返回无效或者错误的对象（new的对象没有完全刷入主存让其读到））
+双重检查里面的同步和第二个判断实际上就相当于把里面的操作整体作为一个原子操作（操作完成才能让给下一个线程，即同时只能有一个线程操作）
+
+public class DoubleCheckedLocking {
+    // 要保证绝对线程安全，必须加上volatile关键字
+    private volatile static Resource resource;
+
+    public static Resource getInstance() {
+        if (resource == null) {
+            // 同步块+二次判断可以保证只会初始化一次对象，整个同步块只会同一时刻只能有一个线程访问（整个块可以看出是原子操作）
+            synchronized(DoubleCheckedLocking.class) {
+                if (resource == null) {
+                    resource = new Resource();
+                }
+            }
+        }
+        // resource不加volatile可能会返回不为null但是无效或者错误的resource
+        return resource;
+    }
+}
+
+当一个共享变量被volatile修饰时，它会保证修改的值会立即被更新到主存，当有其他线程需要读取时，它会去内存中读取新值！（就是所谓的写的操作在读的操作之前）
+
+5、初始化过程中的安全性
+final域的使用
