@@ -3,22 +3,31 @@ Python GUI编程
 Tkinter
 
 Windows：
-    https://www.cnblogs.com/freeweb/p/5205119.html
+    >自己封装：
+        https://www.cnblogs.com/freeweb/p/5205119.html
 
-    用cmd可以正常启动python GUI程序，关掉gui界面或者关掉命令行窗口后，程序都会自动结束，如果我们编写了给普通用户使用的程序该怎么做？
-    一方面，我们应该拷贝python的安装目录过去，因为一般用户计算机上没有python环境，我们直接拷贝安装目录就可以，不用注册表支持；另一方面，python GUI程序在运行时后面会伴随着一个黑色的命令行窗口，这个总是不太好看，我们可以考虑隐藏，隐藏的方法如下：
-        首先编写bat脚本启动python源程序，脚本名称：start.bat
-            @echo off
-            start /b C:\Python27\python.exe python_gui.py
-            exit
-         当然第二行启动位置我们可以根据实际情况编写，这样直接运行start.bat就会启动python程序但是会伴随命令行窗口，所以不得不用一个比较low的方法，就是用vbs脚本把程序放到后台执行，编写脚本start.vbs
-            Set ws = CreateObject("Wscript.Shell")
-            ws.run "cmd /c start.bat",vbhide
-        通过运行这个vbs脚本就可以只看到gui窗口，并且把cmd窗口隐藏掉了，到这里，我们想要的功能就实现了，最后可以用c语言编译封装成一个exe的可执行文件执行上述代码即可实现调用，还可以编写一个最终的启动脚本来启动vbs即可，比如run.bat
-            @echo off
-            start start.vbs
-        虽然过程调用了好几次，但是速度几乎不受影响，并且又是客户端使用，因此没什么问题，这就是简单的python GUI程序的调用方式，并且调用时会让伴随的命令行放到后台去执行
+        用cmd可以正常启动python GUI程序，关掉gui界面或者关掉命令行窗口后，程序都会自动结束，如果我们编写了给普通用户使用的程序该怎么做？
+        一方面，我们应该拷贝python的安装目录过去，因为一般用户计算机上没有python环境，我们直接拷贝安装目录就可以，不用注册表支持；另一方面，python GUI程序在运行时后面会伴随着一个黑色的命令行窗口，这个总是不太好看，我们可以考虑隐藏，隐藏的方法如下：
+            首先编写bat脚本启动python源程序，脚本名称：start.bat
+                @echo off
+                start /b C:\Python27\python.exe python_gui.py
+                exit
+             当然第二行启动位置我们可以根据实际情况编写，这样直接运行start.bat就会启动python程序但是会伴随命令行窗口，所以不得不用一个比较low的方法，就是用vbs脚本把程序放到后台执行，编写脚本start.vbs
+                Set ws = CreateObject("Wscript.Shell")
+                ws.run "cmd /c start.bat",vbhide
+            通过运行这个vbs脚本就可以只看到gui窗口，并且把cmd窗口隐藏掉了，到这里，我们想要的功能就实现了，最后可以用c语言编译封装成一个exe的可执行文件执行上述代码即可实现调用，还可以编写一个最终的启动脚本来启动vbs即可，比如run.bat
+                @echo off
+                start start.vbs
+            虽然过程调用了好几次，但是速度几乎不受影响，并且又是客户端使用，因此没什么问题，这就是简单的python GUI程序的调用方式，并且调用时会让伴随的命令行放到后台去执行
+
+    >借助工具：
+        pyinstaller
 
 Linux：
     相关类库安装：
+        pyinstaller
 
+        pyinstaller -n 'helloTkinter' hello_tkinter.py
+
+        直接封装成一个可执行文件：
+            pyinstaller -n 'helloTkinter' -F hello_tkinter.py

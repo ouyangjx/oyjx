@@ -1,6 +1,6 @@
 XSS攻击：跨站脚本攻击（在页面中嵌入脚本程序，用于盗取账号密码、cookie、下载木马等等） 防范（对用户输入的数据进行HTML转义，一般如<、>、'、"等，子啊使用jstl标签时，可以设置escapeXML="true"进行HTML转义）
 
-CRSF攻击：跨站请求伪造（利用浏览器的cookie，借用用户身份向第三方网站发起恶意请求） 防范（1、将cookie设置成Httponly；2、Session保存用户请求的token，每次请求进行验证；3、通过Referer识别，request.getHeader("Referer");）
+CRSF攻击：跨站请求伪造（利用浏览器的cookie，借用用户身份向第三方网站发起恶意请求） 防范（1、将cookie设置成Httponly；2、Session保存用户请求的token，每次请求进行验证（作为参数，因为跨站取不到）（页面隐藏域？或在cookie也没关系吧）；3、通过Referer识别，request.getHeader("Referer");（非绝对安全，浏览器可以设置不携带，以及又的可以篡改））
 
 SQL注入攻击：
 （将恶意的sql伪装成请求参数，最后在服务器端执行） 防范（1、预编译语句，如PreparedStatement，并且通过占位符传递参数；2、ORM框架，比如Mybatis用#接收参数，即可防止SQL注入；3、避免密码明文存放；4、处理好异常，避免暴露服务器、数据库等信息）

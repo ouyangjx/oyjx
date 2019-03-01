@@ -5,12 +5,35 @@
     同步系统
     补偿机制（错误日志）
 
+关于各种Join的区别：
+    参考图片：image/SQL-join.jpg
+
 数据库优化相关和一些常见问题或SQL
 
 
     SqlServer独特的sql：@Todo
         1、cross apply 和 outer apply
             （inner join 和 left/right join的区别）
+
+            应用：分组后取各组top n
+            也可以使用（推荐）：
+                select
+                    查询列
+                from
+                    原表
+                join (
+                    select
+                        id as tempId,
+                        row_number() over (
+                            partition by 分组列 order by 排序列
+                        ) as rowNum
+                        from
+                            原表
+                ) as ranked on 原表.id = ranked.tempId
+                where
+                    ranked.rowNum >= n
+                // 是否还需要排序可能需要考虑一下
+                // order by ranked.分组列, ranked.拍序列
 
         2、SqlServer分页了解一下
             // 查询20-30条记录

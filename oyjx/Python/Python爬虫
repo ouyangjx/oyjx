@@ -11,4 +11,61 @@ Python爬虫
     bs4（Beautiful Soup）：
         https://beautifulsoup.readthedocs.io/zh_CN/latest/
 
+    Selenium模拟浏览器： /səˈli:niəm/
+        https://zhuanlan.zhihu.com/p/27115580
+        比如借助浏览器登录，避免了提交表单之类等等等等操作需要执行的js，如密码加密
+
+    Chrome Headless
+
+
+    Scrapy
+        Scrapy 是用 Python 实现的一个为了爬取网站数据、提取结构性数据而编写的应用框架。
+        Scrapy 常应用在包括数据挖掘，信息处理或存储历史数据等一系列的程序中。
+
+        引擎 Scrapy Engine
+            获取到一个或者多个request，经由Scrapy Engine传送给Scheduler
+        调度器 Scheduler
+            request特别多并且速度特别快会在Scheduler形成请求队列queue，由Scheduler安排执行
+        下载器 Downloader
+            Scheduler会按照一定的次序取出请求，经由引擎, 下载器中间键 Downloader Middlewares，发送给Downloader
+        爬虫 Spiders
+            对下载下来的数据进行解析，按照item设定的数据结构经由爬虫中间键 Spider Middlewares，Scrapy Engine发送给项目管道
+        项目管道 Item Pipeline
+            这里的项目管道Item Pipeline可以对数据进行进一步的清洗，存储等操作
+
+    xpath：
+        XPath 是一门在 XML 文档中查找信息的语言
+
 具体：
+
+
+
+
+问题：
+    支付宝：
+        支付宝 ua param
+
+
+爬虫去重问题：
+
+场景：
+1 、在单一页面解析的时候，可能会提取到重复的链接，需要 url 去重；
+2 、在不同任务、不同页面解析的时候，可能会提取到重复的链接，需要 url 去重；
+3 、在数据提取的时候，可能会遇到重复数据，比如一份重要性比较高的数据被多个不同的站点以各种形式引用（类似论文的引用，不过被引用的论文重复发表在多个期刊），需要 data 去重。
+
+方法：
+内存（HashSet）
+Redis
+NoSql
+
+
+数据清洗？去重？
+    类型啊，校验啊等等（可能有错误数据或者网站规则变了）
+
+框架还是自己写爬虫？
+    = =
+    关于requests的一些连接池、cookie、session机制了解下，还有cdn方面的，和scrapy等框架做些对比
+
+
+
+

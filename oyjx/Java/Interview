@@ -12,7 +12,7 @@
     1、sleep
     2、wait()直到notify()（或者并发类库中的await()直到signal()）
     3、任务等待某个输入/输出完成（通过关闭流，另外NIO提供了更好的方法@Todo）
-    4、试图获取锁，但锁不可用（不一定是死锁哈）（ReetrantLock中获取锁后调用lockInterruptibly()，当Thread.interrupt()被调用是可以中断）
+    4、试图获取锁，但锁不可用（不一定是死锁哈）（ReentrantLock中获取锁后调用lockInterruptibly()，当Thread.interrupt()被调用是可以中断）
 
 通过调用Thread.interrupt()方法可以中断1/2两种情况，使之抛出InterruptionException异常
 关于Thread.interrupted()方法检查中断 @Todo

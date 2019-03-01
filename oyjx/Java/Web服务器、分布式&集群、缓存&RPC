@@ -71,7 +71,7 @@ redis哨兵（算是实现集群的一种方式吧）：
     4.当master被标记为客观下线后，哨兵想下线的master的所有slave发送info命令的频率会由每10秒1次变成每秒一次
 
     下面博客写的有两台服务器两个master是什么鬼！！！ @Todo
-    https://blog.csdn.net/qq_37853817/article/details/78961462
+    参考：https://blog.csdn.net/qq_37853817/article/details/78961462
     参考图片：image/Redis哨兵模式.png
     模拟：使用两台服务器模拟六个节点，一台服务器一个master，两个salve。
 
