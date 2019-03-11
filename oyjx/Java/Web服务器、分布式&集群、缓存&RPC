@@ -131,12 +131,26 @@ Redis & MongoDB 整整它们的数据源相关的东西
 负载均衡
     方案、实例、测试（压测等）@Todo
 
+    Nginx负载均衡：
+        参考https://www.cnblogs.com/wang-meng/p/5861174.html
+    1、Nginx配置多server并可加权重
+
+    2、Keepalived实现主备：
+        Keepalived可以在主机上产生一个虚拟的ip, 这里叫做vip(v是virtual的意思):192.168.200.150, keepalived会将这个vip绑定到交换机上.
+    当用户访问主机:192.168.200.129时, 交换机会通过这个ip和vip的对应找到192.168.200.129上的Nginx进行处理.
+    如果当有一天192.168.200.129上的Nginx挂掉的时候, Keepalived会立即在备机上生成一个相同的vip: 192.168.200.150, 当用户继续访问192.168.200.129时, 交换机上已经绑定了vip, 这时发现这个vip是存在于192.168.200.130上面的, 所以直接将请求转发到了备机上.
+    如果主机被修复好能够继续对外提供服务时, 这时keepalived会将主机上继续生成这个vip, 同时回收在备机上生成的vip. 这个是通过心跳检查来判断主机已恢复使用.
+
 静态资源服务器、CDN
      Nginx、Apache
      CDN注意点、回源...
 
 主从
     数据库、代理服务器
+
+消息队列
+    JMS、ActiveMQ、Kafka
+    消息系统的核心作用就是三点：解耦，异步和并行
 
 
 高并发抢红包方案：
@@ -172,3 +186,24 @@ Redis & MongoDB 整整它们的数据源相关的东西
     防刷问题
     红包放redis怎么操作，一个红包一个key，抢完删除？
     并发问题的解决（如果不仅是在应用服务器集群还是在redis集群下呢？）
+
+
+搭建分布式集群环境：
+SpringBoot + SpringCloud（Dubbo） + ZK
++ Nginx负载均衡 + MySQL主从集群+读写分离
++ Redis主从集群+哨兵 + MongoDB主从
+
+
+大数据：
+
+大数据的5V特点:Volume(大量)、Velocity(高速)、Variety(多样)、Value(价值密度)、Veracity（真实性）
+
+Hadoop Spark Storm HBase Hive
+
+Kafka Flume（Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统）
+
+Mahout
+
+Docker、KVM
+
+Scala

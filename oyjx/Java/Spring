@@ -14,6 +14,7 @@ spring bean作用域有以下5个：
 与Struts2比较：
 1) Struts2会对每一个请求,产生一个Action的实例来处理；（因为Struts2的参数是成员变量啊，如果单例会出问题的，比如被覆盖！）
 2) Spring的Ioc容器管理的bean默认是单实例的。
+    scope='prototype/singleton'（多例/单例）
 
 
 Spring的三种构造方式：
