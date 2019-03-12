@@ -19,7 +19,9 @@ spring bean作用域有以下5个：
 
 Spring的三种构造方式：
 1 field注入
+    注解？
 2 构造器注入（推荐？）
+    <property name="xx" ref="xxx"></property>
 3 setter注入
 
 @Resource和@Autowired：
@@ -336,7 +338,7 @@ Session同步
 // @Todo 找时间仔细看吧
 1、用户发送请求到前端控制器（DispatcherServlet）。
 2、前端控制器请求处理器映射器（HandlerMapping）去查找处理器（Handler）。
-3、找到以后处理器映射器（HandlerMappering）向前端控制器返回执行链（HandlerExecutionChain）。
+3、找到以后处理器映射器（HandlerMapping）向前端控制器返回执行链（HandlerExecutionChain）。
 4、前端控制器（DispatcherServlet）调用处理器适配器（HandlerAdapter）去执行处理器（Handler）。
 5、处理器适配器去执行Handler。
 6、处理器执行完给处理器适配器返回ModelAndView。

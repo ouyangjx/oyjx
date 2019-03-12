@@ -103,7 +103,6 @@ redis哨兵（算是实现集群的一种方式吧）：
 
         以同样的方法在两个服务器中分别新建三个sentinel的配置文件。
 
-
         在同一个服务器中配置多个时只需要将文件名和端口名修改即可。
         本次在服务器一中配置了两个，端口号分别为26379和26380，在服务器二中配置一个，端口号为26379。
         Sentinel会根据Master的配置自动发现Master的Slaves，因此不需要配置slave。
@@ -115,7 +114,7 @@ redis集群（利用Cluster实现集群）：
         1):节点自动发现
 　　     2):slave->master 选举,集群容错
 　　     3):Hot resharding:在线分片
-　　     4):进群管理:cluster xxx
+　　     4):集群管理:cluster xxx
 　　     5):基于配置(nodes-port.conf)的集群管理
 　　     6):ASK 转向/MOVED 转向机制.
 

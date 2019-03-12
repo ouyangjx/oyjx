@@ -114,14 +114,32 @@
             这个执行器会优化，但也要注意以下。
             对了：update用到join时候要注意，不要把一些不能改的数据改掉了！
         9、必要时top 1 或limit 1，查到则返回，不用count()之类的判断是否存在某条数据
-        10、
+
+        多表之间的连接有三种方式：Nested Loops，Hash Join 和 Sort Merge Join。
+        具体适用哪种类型的连接取决于：
+            1.当前的优化器模式 （ALL_ROWS 和 RULE）
+            2.取决于表大小
+            3.取决于连接列是否有索引
+            4.取决于连接列是否排序
+
+        @Todo
+        10、HASH JOIN：散列连接
+            HASH JOIN在两个表的数据量差别很大的时候
+        11、SORT MERGE JOIN：排序合并连接
+            1.RBO模式
+            2.不等价关联(>,<,>=,<=,<>)
+            3.HASH_JOIN_ENABLED=false
+            4.用在没有索引，并且数据已经排序的情况
+        12、NESTED LOOP：嵌套循环连接
+            适用于驱动表的记录集比较小（<10000）而且inner表需要有有效的访问方法（Index），并且索引选择性较好的时候.
+            JOIN的顺序很重要，驱动表的记录集一定要小，返回结果集的响应时间是最快的。
 
 
     B-Tree索引
     Hash索引
     位图索引
 
-存储过程（procedure） 触发器（trigger）
+存储过程（procedure /prəˈsi:dʒə(r)/） 触发器（trigger /ˈtrɪgə(r)/）
 
 关于视图的注意点
 （删除视图要注意啊！！！）
